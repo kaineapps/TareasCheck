@@ -1,8 +1,8 @@
 {
   "name": "TareasCheck",
   "short_name": "TareasCheck",
-  "start_url": "/?source=android",
-  "scope": "/",
+  "start_url": "./?source=android",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#fffaf0",
   "theme_color": "#16a34a",
