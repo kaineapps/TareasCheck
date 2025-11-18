@@ -117,8 +117,8 @@
     })
 
     if('serviceWorker' in navigator){
-      navigator.serviceWorker.register('/service-worker.js')
-    }
+  navigator.serviceWorker.register('./service-worker.js').catch(()=>{/* no fatal */})
+}
 
     function addTaskFromInput(){
       const text = newTaskInput.value.trim()
