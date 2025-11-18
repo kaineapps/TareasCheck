@@ -8,7 +8,7 @@
   "theme_color": "#16a34a",
   "description": "TareasCheck es una aplicación ligera y rápida para gestionar tus tareas diarias. Añade, edita y marca tareas con un simple toque; la app guarda tus listas en el dispositivo sin necesidad de conexión. Ideal para organizar tu día desde el móvil sin complicaciones, desde reuniones de empresa a la compra del super. Características principales: sincronizado local (localStorage), edición de tareas, filtros (Todas / Activas / Completadas), borrar completadas, y diseño minimalista optimizado para usarse como aplicación instalable. Fácil de usar, sin cuentas ni registros, perfecto si solo quieres una lista de tareas fiable y directa.",
   "icons": [
-    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+    { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
   ]
 }
