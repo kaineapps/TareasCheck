@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>TareasCheck — Tareas con IA</title>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#2563eb" />
+  <style>
+    :root{
+      --bg: #f8fafc; --card: #ffffff; --text: #0f172a; --muted:#6b7280; --accent:#16a34a; --postit:#fffaf0;
+    }
+    [data-theme="dark"]{
+      --bg:#071032; --card:#0b1220; --text:#f8fafc; --muted:#9ca3af; --accent:#16a34a; --postit:#fffaf0
+    }
+    *{box-sizing:border-box}
+    body{
+      font-family:Inter,system-ui,Segoe UI,Roboto,Arial;
+      min-height:100vh;margin:0;background:var(--bg);color:var(--text);
+      display:flex;align-items:center;justify-content:center;padding:24px
+    }
+    .app{width:100%;max-width:720px}
+    header{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+    .brand{display:flex;align-items:center;gap:12px}
+    .logo{width:46px;height:46px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#06b6d4);display:flex;align-items:center;justify-content:center;font-weight:700;color:white}
+    h1{font-size:20px;margin:0}
+    .card{background:var(--card);padding:18px;border-radius:12px;box-shadow:0 6px 20px rgba(2,6,23,0.06);color:var(--text)}
+    .input-row{display:flex;gap:8px;margin-bottom:12px}
+    input[type=text]{flex:1;padding:10px 12px;border-radius:8px;border:1px solid rgba(2,6,23,0.06);background:transparent;color:var(--text)}
+    button{background:var(--accent);border:none;color:white;padding:10px 14px;border-radius:8px;cursor:pointer}
+    button.ghost{background:transparent;border:1px solid rgba(2,6,23,0.06);color:var(--text)}
+    ul.tasks{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}
+    li.task{display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;border:1px solid rgba(0,0,0,0.03);background:linear-gradient(180deg,rgba(0,0,0,0.02),transparent)}
+    .title.completed{text-decoration:line-through;color:var(--muted)}
+    .small{font-size:12px;color:var(--muted)}
+    .theme-toggle{margin-left:auto;display:flex;gap:8px;align-items:center}
+    .postit-preview{width:36px;height:36px;border-radius:6px;background:var(--postit);display:flex;align-items:center;justify-content:center;border:1px solid rgba(0,0,0,0.06)}
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div class="brand">
+        <div class="logo">TC</div>
+        <div>
+          <h1>TareasCheck</h1>
+          <div class="small">Tu lista guardada en el navegador</div>
+        </div>
+      </div>
+      <div class="theme-toggle">
+        <div class="small">Tema</div>
+        <button id="themeBtn" class="ghost">Auto</button>
+        <div class="postit-preview">✓</div>
+      </div>
+    </header>
+    <section class="card">
+      <div class="input-row">
+        <input id="newTask" type="text" placeholder="Añadir nueva tarea y pulsar Enter">
+        <button id="addBtn">Añadir</button>
+        <button id="clearCompleted" class="ghost">Borrar completadas</button>
+      </div>
+      <div style="margin-bottom:8px;display:flex;gap:8px;">
+        <select id="filter">
+          <option value="all">Todas</option>
+          <option value="active">Activas</option>
+          <option value="completed">Completadas</option>
+        </select>
+        <div class="small" id="counter">0 tareas</div>
+      </div>
+      <ul id="tasks" class="tasks"></ul>
+      <div class="small">Guardado automáticamente (localStorage)</div>
+    </section>
+  </main>
+  <script>
+    const THEME_KEY = 'tareascheck.theme'
+    const root = document.documentElement
+    const themeBtn = document.getElementById('themeBtn')
+
+    function applyTheme(mode){
+      if(mode === 'auto'){
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+        mode = prefersDark ? 'dark' : 'light'
+        themeBtn.textContent = 'Auto'
+      } else {
+        themeBtn.textContent = mode.charAt(0).toUpperCase()+mode.slice(1)
+      }
+      if(mode === 'dark') root.setAttribute('data-theme','dark')
+      else root.removeAttribute('data-theme')
+    }
+
+    themeBtn.addEventListener('click', ()=>{
+      const cur = localStorage.getItem(THEME_KEY) || 'auto'
+      const next = cur === 'auto' ? 'dark' : (cur === 'dark' ? 'light' : 'auto')
+      localStorage.setItem(THEME_KEY,next)
+      applyTheme(next)
+    })
+
+    const savedTheme = localStorage.getItem(THEME_KEY) || 'auto'
+    applyTheme(savedTheme)
+
+    const STORAGE_KEY = 'checklist.tasks.v1'
+    const tasksEl = document.getElementById('tasks')
+    const newTaskInput = document.getElementById('newTask')
+    const addBtn = document.getElementById('addBtn')
+    const filterEl = document.getElementById('filter')
+    const clearCompletedBtn = document.getElementById('clearCompleted')
+    const counterEl = document.getElementById('counter')
+
+    let tasks = loadTasks()
+    render()
+
+    addBtn.addEventListener('click', addTaskFromInput)
+    newTaskInput.addEventListener('keydown', e => { if(e.key === 'Enter') addTaskFromInput() })
+    filterEl.addEventListener('change', render)
+    clearCompletedBtn.addEventListener('click', ()=>{
+      tasks = tasks.filter(t=>!t.done); saveTasks(); render();
+    })
+
+    if('serviceWorker' in navigator){
+      navigator.serviceWorker.register('/service-worker.js')
+    }
+
+    function addTaskFromInput(){
+      const text = newTaskInput.value.trim()
+      if(!text) return
+      tasks.unshift({id: Date.now(), text, done:false})
+      newTaskInput.value = ''
+      saveTasks(); render()
+    }
+
+    function render(){
+      const filter = filterEl.value
+      tasksEl.innerHTML = ''
+      const filtered = tasks.filter(t=> filter==='all'?true : filter==='active'? !t.done : t.done)
+      for(const t of filtered){
+        const li = document.createElement('li')
+        li.className = 'task'
+        const label = document.createElement('label')
+        const chk = document.createElement('input')
+        chk.type = 'checkbox'
+        chk.checked = t.done
+        chk.onchange = ()=>{ t.done = chk.checked; saveTasks(); render() }
+        const title = document.createElement('div')
+        title.textContent = t.text
+        title.contentEditable = true
+        title.onblur = ()=>{ t.text = title.textContent.trim(); saveTasks(); render() }
+        if(t.done) title.className = 'title completed'
+        else title.className = 'title'
+
+        label.appendChild(chk)
+        label.appendChild(title)
+        li.appendChild(label)
+        tasksEl.appendChild(li)
+      }
+      counterEl.textContent = tasks.length + (tasks.length===1?' tarea':' tareas')
+    }
+
+    function saveTasks(){
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks))
+    }
+
+    function loadTasks(){
+      try{
+        const raw = localStorage.getItem(STORAGE_KEY)
+        return raw? JSON.parse(raw): []
+      } catch(e){ return [] }
+    }
+  </script>
+</body>
+</html>
